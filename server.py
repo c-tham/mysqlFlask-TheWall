@@ -19,6 +19,7 @@ import os, binascii # include this at the top of your file
 salt = binascii.b2a_hex(app.secret_key)
 
 import md5
+import time
 
 ####################
 @app.route('/')
@@ -39,7 +40,7 @@ def registration():
   password1 = request.form['password1']
   password2 = request.form['password2']
   dob = request.form['dob']
-  print '* ',email, firstname, lastname, password1, password2, dob
+  print 'Input fields-',email, firstname, lastname, password1, password2, dob
 #email
   if len(email) < 1:
     flash('** (Registration) Your Email cannot be empty! **','error_empty')
@@ -110,7 +111,7 @@ def registration():
              'first': email
            }
     db = mysql.query_db(query, data)
-    print db
+    # print db
     if len(db) > 0:
       flash('** (Registration) Your email address ('+email+') is already registrated **','error_hacker')
       flash('** (Registration) Please enter a different email address **','error_hacker')
@@ -124,12 +125,11 @@ def registration():
              'first': firstname,
              'second': lastname,
              'third': email,
-            #  'forth': password1,
              'forth': hashed_pw,
              'fifth': str(dob)
            }
     db = mysql.query_db(query, data)
-    print db
+    # print db
     if len(str(db)) > 0:
       flash('Account created successfull.','pass')
       flash(str('('+email+') ('+firstname+') ('+lastname+') ('+password1+')  ('+hashed_pw+') ('+dob+') ('+salt+') '),'error_hacker')
@@ -167,16 +167,16 @@ def login():
              'second': md5.new(password + salt).hexdigest()
            }
     db = mysql.query_db(query, data)
-    print db
-    print md5.new(password + salt).hexdigest()
-    print salt
+    # print db
+    # print md5.new(password + salt).hexdigest()
+    # print salt
     if len(db) == 0:
       flash('** (Login) Your email address or/and password are incorrected **','error_hacker')
       error = True
     else:
       flash('Login successful.','pass')
       session["user_id"] = db[0]["id"]
-      print session["user_id"]
+      print "User ID-",session["user_id"]
       return redirect("/dashboard")
   return redirect('/')
 
@@ -184,7 +184,7 @@ def login():
 @app.route("/dashboard")
 def dashboard():
   print "** dashboard **"
-  print session["user_id"]
+  print "User ID-",session["user_id"]
   # return render_template("dashboard.html")
   print "** message **"
   query = "SELECT * FROM users WHERE id = :first"
@@ -192,15 +192,15 @@ def dashboard():
           "first": session["user_id"]
         }
   db1 = mysql.query_db(query, data) #list of dictionaries
-  print db1
-  query = "select m.id, concat(u.first_name,' ',u.last_name) as name, m.message, date_format(m.created_at,'%M %D %Y, %r') as created_at from messages m join users u on m.user_id = u.id order by m.created_at desc"
+  # print db1
+  query = "select m.id, m.user_id, concat(u.first_name,' ',u.last_name) as name, m.message, date_format(m.created_at,'%M %D %Y, %r') as created_at, m.created_at as messageDatetime from messages m join users u on m.user_id = u.id order by m.created_at desc"
   db2 = mysql.query_db(query) #list of dictionaries
-  print db2
+  # print db2
   #-----
   print "** comments **"
   query = "select c.id, c.user_id, c.message_id, concat(u.first_name,'  ',u.last_name) as name, c.comment, date_format(c.created_at,'%M %D %Y, %r') as created_at from comments c left join messages m on c.message_id = m.id left join users u on c.user_id = u.id order by c.created_at desc"
   db3 = mysql.query_db(query)
-  print db3
+  # print db3
   #-----
   return render_template("dashboard.html", user=db1[0], postmessage=db2, postcomment=db3)
 
@@ -208,9 +208,9 @@ def dashboard():
 @app.route("/postmessage",methods=['POST'])
 def message():
   print "** post message **"
-  print session["user_id"]
+  print "User ID-",session["user_id"]
   message = request.form['message']
-  print message
+  # print message
   if len(message) == 0:
     flash('** Your message is empty **','error_hacker')
   else:
@@ -220,7 +220,7 @@ def message():
              'second': message
            }
     db = mysql.query_db(query, data)
-    print db
+    # print db
     if len(str(db)) > 0:
       flash('Message posted succesful.','pass')
     else:
@@ -231,10 +231,10 @@ def message():
 @app.route("/postcomment",methods=['POST'])
 def comment():
   print "** post comment **"
-  print session["user_id"]
-  print request.form['messageID']
+  print "User ID-",session["user_id"]
+  print "Message ID-",request.form['messageID']
   comment = request.form['comment']
-  print comment
+  # print comment
   if len(comment) == 0:
     flash('** Your comment is empty **','error_hacker')
   else:
@@ -245,11 +245,55 @@ def comment():
              'third': comment
            }
     db = mysql.query_db(query, data)
-    print db
+    # print db
     if len(str(db)) > 0:
       flash('Comment posted succesful.','pass')
     else:
       flash('** System Error. Unable to post a comment **','error_hacker')
+  return redirect("/dashboard")
+
+####################
+@app.route("/deletemessage",methods=['POST'])
+def deletemessage():
+  waitMinute = 3
+  print "*** delete my message ***"
+  print "User ID-",session["user_id"]
+  print "Message ID-",request.form['messageID']
+  d1 = request.form['messageDatetime']
+  d2 = str(datetime.now())[:19]
+  print "Message time-", d1, "Current time-", d2
+  dd1 = time.mktime(time.strptime(d1, '%Y-%m-%d %H:%M:%S'))
+  dd2 = time.mktime(time.strptime(d2, '%Y-%m-%d %H:%M:%S'))
+  dd = (dd2 - dd1) / 60
+  print "Time Diff in minute(s)-", dd
+  if dd > waitMinute:
+    # Delete comment(s) first
+    print "Delete from comment table"
+    query = "DELETE FROM `comments` WHERE `message_id`=:first"
+    data = {
+              'first': request.form['messageID']
+    }
+    db = mysql.query_db(query, data)
+    print db
+    if len(str(db)) > 0:
+      flash('Comment(s) deleted succesful.','pass')
+    else:
+      flash('** System Error. Unable to delete comment(s) **','error_hacker')
+    # Delete message second
+    print "Delete from message table"
+    query = "DELETE FROM `messages` WHERE `user_id`=:first and `id`=:second"
+    data = {
+              'first': session["user_id"],
+              'second': request.form['messageID']
+    }
+    db = mysql.query_db(query, data)
+    print db
+    if len(str(db)) > 0:
+      flash('Message deleted succesful.','pass')
+    else:
+      flash('** System Error. Unable to delete message **','error_hacker')
+  else:
+    flash('** You must wait '+str(waitMinute)+' minutes in order to delete your message. **', 'error_hacker')
   return redirect("/dashboard")
 
 ####################

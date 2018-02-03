@@ -18,10 +18,17 @@ from messages m
 join users u on m.user_id = u.id
 ;
 
+select c.id, c.user_id, c.message_id, concat(u.first_name,'  ',u.last_name) as name, c.comment, c.created_at
+from comments c
+left join messages m on c.message_id = m.id
+left join users u on c.user_id = u.id
+;
+
 select *
 from comments c
 left join messages m on c.message_id = m.id
+left join users u on c.user_id = u.id
 ;
 
-select tblcomments.comment, tblusers.first_name 
-from tblcomments left join tblusers on tblcomments.user_id = tblusers.id WHERE tblcomments.message_id = :m_id;"
+select created_at - updated_at, created_at, date_format(created_at,'%Y-%m-%d %h:%m:%s') -  '2018-02-03 01:07:51' from messages
+;
