@@ -198,13 +198,11 @@ def dashboard():
   print db2
   #-----
   print "** comments **"
-  message = [] #Return from your SELECT * query here.
-  for message in db2:
-    query = "select c.id, c.user_id, c.message_id, concat(u.first_name,'  ',u.last_name) as name, c.comment, date_format(c.created_at,'%M %D %Y, %r') as created_at from comments c left join messages m on c.message_id = m.id left join users u on c.user_id = u.id order by c.created_at desc"
-    message = mysql.query_db(query)
-  print message
+  query = "select c.id, c.user_id, c.message_id, concat(u.first_name,'  ',u.last_name) as name, c.comment, date_format(c.created_at,'%M %D %Y, %r') as created_at from comments c left join messages m on c.message_id = m.id left join users u on c.user_id = u.id order by c.created_at desc"
+  db3 = mysql.query_db(query)
+  print db3
   #-----
-  return render_template("dashboard.html", user=db1[0], postmessage=db2, postcomment=message)
+  return render_template("dashboard.html", user=db1[0], postmessage=db2, postcomment=db3)
 
 ####################
 @app.route("/postmessage",methods=['POST'])
@@ -259,6 +257,7 @@ def comment():
 def logout():
   print "** logout **"
   session.clear()
+  flash('Logout succesful.','pass')
   return redirect("/")
 
 ####################
